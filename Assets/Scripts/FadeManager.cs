@@ -1,20 +1,36 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class FadeManager : MonoBehaviour
+public class RoomCollapse : MonoBehaviour
 {
     [SerializeField] private List<FadeController> objectsToFade = new List<FadeController>();
     [SerializeField] private float fadeDuration = 2f;
+    [SerializeField] private List<GameObject> objectsToMove;
+    [SerializeField] private float targetY = -100f;
 
     private bool isFading = false;
     private bool hasFadedOut = false;
+    private bool isMoving = false;
     private float timer = 0f;
+    private Dictionary<GameObject, float> startYPositions = new Dictionary<GameObject, float>();
+
+    private void Start()
+    {
+        foreach (var obj in objectsToMove)
+        {
+            if (obj != null)
+            {
+                startYPositions[obj] = obj.transform.position.y;
+            }
+        }
+    }
 
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.P) && !isFading && !hasFadedOut)
         {
             StartFade();
+            StartMovingObjects();
         }
 
         if (isFading)
@@ -32,11 +48,43 @@ public class FadeManager : MonoBehaviour
                 }
             }
 
-            // Stop fading when the timer completes
             if (timer >= fadeDuration)
             {
                 isFading = false;
                 hasFadedOut = true;
+            }
+        }
+
+        if (isMoving)
+        {
+            foreach (var obj in objectsToMove)
+            {
+                if (obj != null)
+                {
+                    float currentY = obj.transform.position.y;
+                    float newY = Mathf.Lerp(currentY, targetY, Time.deltaTime * 0.1f);
+                    obj.transform.position = new Vector3(obj.transform.position.x, newY, obj.transform.position.z);
+
+                    if (Mathf.Abs(obj.transform.position.y - targetY) < 0.1f)
+                    {
+                        obj.transform.position = new Vector3(obj.transform.position.x, targetY, obj.transform.position.z);
+                    }
+                }
+            }
+
+            bool allObjectsAtTarget = true;
+            foreach (var obj in objectsToMove)
+            {
+                if (obj != null && Mathf.Abs(obj.transform.position.y - targetY) > 0.1f)
+                {
+                    allObjectsAtTarget = false;
+                    break;
+                }
+            }
+
+            if (allObjectsAtTarget)
+            {
+                isMoving = false;
             }
         }
     }
@@ -45,5 +93,10 @@ public class FadeManager : MonoBehaviour
     {
         timer = 0f;
         isFading = true;
+    }
+
+    public void StartMovingObjects()
+    {
+        isMoving = true;
     }
 }
